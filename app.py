@@ -62,7 +62,6 @@ def fitness(individuo, horas_necessarias, num_enfermeiros, num_turnos, enfermeir
     return valor_fitness,
 
 
-
 def run_genetic_algorithm(params, the, n_enfermeiros, n_turnos):
     # Configuração do algoritmo genético usando DEAP
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
