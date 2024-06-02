@@ -24,6 +24,8 @@ def the_por_turno(pacientes, T):
 def fitness(individuo, horas_necessarias, num_enfermeiros, num_turnos, enfermeiros_por_tipo=None):
     individuo = np.array(individuo).reshape(num_enfermeiros, num_turnos)
     total_horas = np.sum(individuo, axis=0) * 12  # Supondo turnos de 12 horas
+    print(total_horas)
+    print(total_horas >= horas_necessarias)
     
     # Critério 1: Cobertura de horas de enfermagem necessárias
     cobertura = np.sum(total_horas >= horas_necessarias)

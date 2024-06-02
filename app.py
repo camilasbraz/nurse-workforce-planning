@@ -26,7 +26,7 @@ def fitness(individuo, horas_necessarias, num_enfermeiros, num_turnos, enfermeir
     total_horas = np.sum(individuo, axis=0) * 12  # Supondo turnos de 12 horas
     
     # Critério 1: Cobertura de horas de enfermagem necessárias
-    cobertura = np.sum(total_horas >= horas_necessarias)
+    penalidade_cobertura = np.sum(np.abs(total_horas - horas_necessarias))
     
     # Critério 2: Respeito aos descansos mínimos entre turnos
     violacoes_descanso = 0
@@ -35,29 +35,37 @@ def fitness(individuo, horas_necessarias, num_enfermeiros, num_turnos, enfermeir
         if any(np.diff(turnos) == 1):  # Verifica se há turnos consecutivos
             violacoes_descanso += 1
     
-    # Critério 3: Distribuição justa dos turnos entre enfermeiros
-    turnos_por_enfermeiro = np.sum(individuo, axis=1)
-    distribuicao_justa = np.std(turnos_por_enfermeiro)
+    # # Critério 3: Distribuição justa dos turnos entre enfermeiros
+    # turnos_por_enfermeiro = np.sum(individuo, axis=1)
+    # distribuicao_justa = np.std(turnos_por_enfermeiro)
     
-    # Critério 4: Respeito à porcentagem mínima de enfermeiros necessários por tipo de paciente
-    violacao_tipo_enfermeiro = 0
-    if enfermeiros_por_tipo is None:
-        enfermeiros_por_tipo = [0.33, 0.33, 0.34]  # Exemplo de porcentagens mínimas necessárias
-    for tipo, pct_min in enumerate(enfermeiros_por_tipo):
-        num_enfermeiros_tipo = np.sum(individuo[:, tipo % num_turnos])
-        if num_enfermeiros_tipo < pct_min * num_enfermeiros:
-            violacao_tipo_enfermeiro += (pct_min * num_enfermeiros - num_enfermeiros_tipo)
+    # # Critério 4: Respeito à porcentagem mínima de enfermeiros necessários por tipo de paciente
+    # violacao_tipo_enfermeiro = 0
+    # if enfermeiros_por_tipo is None:
+    #     enfermeiros_por_tipo = [0.33, 0.33, 0.34]  # Exemplo de porcentagens mínimas necessárias
+    # for tipo, pct_min in enumerate(enfermeiros_por_tipo):
+    #     num_enfermeiros_tipo = np.sum(individuo[:, tipo % num_turnos])
+    #     if num_enfermeiros_tipo < pct_min * num_enfermeiros:
+    #         violacao_tipo_enfermeiro += (pct_min * num_enfermeiros - num_enfermeiros_tipo)
+    
+    # Penalidade por turnos não cobertos
+    penalidade_turnos_nao_cobertos = np.sum(total_horas < horas_necessarias)
+    
+    # Penalidade por turnos consecutivos
+    penalidade_turnos_consecutivos = violacoes_descanso
     
     # Combinação dos critérios em um valor de fitness
-    valor_fitness = cobertura - (violacoes_descanso + distribuicao_justa + violacao_tipo_enfermeiro)
+    valor_fitness = (penalidade_cobertura  * 100) - (penalidade_turnos_nao_cobertos * 100) - (penalidade_turnos_consecutivos * 100)
+    # - (distribuicao_justa * 10) - (violacao_tipo_enfermeiro * 10)
     
     return valor_fitness,
 
 
+
 def run_genetic_algorithm(params, the, n_enfermeiros, n_turnos):
     # Configuração do algoritmo genético usando DEAP
-    creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
-    creator.create("Individual", list, fitness=creator.FitnessMin)
+    creator.create("FitnessMax", base.Fitness, weights=(-1.0,))
+    creator.create("Individual", list, fitness=creator.FitnessMax)
 
     toolbox = base.Toolbox()
     toolbox.register("attr_bool", random.randint, 0, 1)
@@ -111,7 +119,7 @@ cxpb = st.number_input('Probabilidade de crossover', min_value=0.0, max_value=1.
 mutpb = st.number_input('Probabilidade de mutação', min_value=0.0, max_value=1.0, value=0.2)
 n_gen = st.number_input('Número de gerações', min_value=1, value=20)
 
-p_input = st.text_input('Pacientes de cada tipo (ex: 40, 12, 5, 2)', '40, 12, 5, 2')
+p_input = st.text_input('Pacientes de cada tipo (ex: 40, 12, 5, 2)', '5, 5, 5, 5')
 p = list(map(int, p_input.split(',')))
 
 if st.button('Otimizar'):
@@ -126,7 +134,7 @@ if st.button('Otimizar'):
     
     pop, hof, stats, logbook = run_genetic_algorithm(params, the, n_enfermeiros, n_turnos)
     best_ind = hof[0]
-    st.write('Melhor solução:', best_ind)
+    # st.write('Melhor solução:', best_ind)
     st.write('Fitness da melhor solução:', best_ind.fitness.values[0])
     
 
@@ -138,7 +146,7 @@ if st.button('Otimizar'):
 
     # Gráfico da evolução do fitness ao longo das gerações
     gen = logbook.select("gen")
-    min_fitness_values = logbook.select("min")
+    min_fitness_values = logbook.select("max")
     avg_fitness_values = logbook.select("avg")
 
     plt.figure(figsize=(10, 5))
