@@ -26,7 +26,7 @@ def fitness(individuo, horas_necessarias, num_enfermeiros, num_turnos, enfermeir
     total_horas = np.sum(individuo, axis=0) * 12  # Supondo turnos de 12 horas
     
     # Critério 1: Cobertura de horas de enfermagem necessárias
-    penalidade_cobertura = np.sum(np.abs(total_horas - horas_necessarias))
+    penalidade_cobertura = np.sum(np.abs(total_horas - horas_necessarias)) * 100
     
     # Critério 2: Respeito aos descansos mínimos entre turnos
     violacoes_descanso = 0
@@ -34,10 +34,12 @@ def fitness(individuo, horas_necessarias, num_enfermeiros, num_turnos, enfermeir
         turnos = np.where(individuo[i] == 1)[0]
         if any(np.diff(turnos) == 1):  # Verifica se há turnos consecutivos
             violacoes_descanso += 1
+     # Penalidade por turnos consecutivos
+    penalidade_turnos_consecutivos = violacoes_descanso * 1000
     
-    # # Critério 3: Distribuição justa dos turnos entre enfermeiros
-    # turnos_por_enfermeiro = np.sum(individuo, axis=1)
-    # distribuicao_justa = np.std(turnos_por_enfermeiro)
+    # Critério 3: Distribuição justa dos turnos entre enfermeiros
+    turnos_por_enfermeiro = np.sum(individuo, axis=1)
+    penalidade_distribuicao_justa = np.std(turnos_por_enfermeiro) * 10
     
     # # Critério 4: Respeito à porcentagem mínima de enfermeiros necessários por tipo de paciente
     # violacao_tipo_enfermeiro = 0
@@ -49,14 +51,13 @@ def fitness(individuo, horas_necessarias, num_enfermeiros, num_turnos, enfermeir
     #         violacao_tipo_enfermeiro += (pct_min * num_enfermeiros - num_enfermeiros_tipo)
     
     # Penalidade por turnos não cobertos
-    penalidade_turnos_nao_cobertos = np.sum(total_horas < horas_necessarias)
+    penalidade_turnos_nao_cobertos = np.sum(total_horas < horas_necessarias)  * 100
     
-    # Penalidade por turnos consecutivos
-    penalidade_turnos_consecutivos = violacoes_descanso
+   
     
     # Combinação dos critérios em um valor de fitness
-    valor_fitness = (penalidade_cobertura  * 100) - (penalidade_turnos_nao_cobertos * 100) - (penalidade_turnos_consecutivos * 100)
-    # - (distribuicao_justa * 10) - (violacao_tipo_enfermeiro * 10)
+    valor_fitness = (penalidade_cobertura) - (penalidade_turnos_nao_cobertos) - (penalidade_turnos_consecutivos) - (penalidade_distribuicao_justa ) 
+    # - (violacao_tipo_enfermeiro * 10)
     
     return valor_fitness,
 
@@ -64,7 +65,7 @@ def fitness(individuo, horas_necessarias, num_enfermeiros, num_turnos, enfermeir
 
 def run_genetic_algorithm(params, the, n_enfermeiros, n_turnos):
     # Configuração do algoritmo genético usando DEAP
-    creator.create("FitnessMax", base.Fitness, weights=(-1.0,))
+    creator.create("FitnessMax", base.Fitness, weights=(1.0,))
     creator.create("Individual", list, fitness=creator.FitnessMax)
 
     toolbox = base.Toolbox()
