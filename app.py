@@ -134,19 +134,23 @@ if st.button('Otimizar'):
     st.write('Fitness da melhor solução:', best_ind.fitness.values[0])
     
     best_individual = np.array(best_ind)
-    print    
-    st.write('Enfermeiros 8h: ', best_individual[0], ' - ',best_individual[0]*44, 'h')
-    st.write('Enfermeiros 12h: ', best_individual[1], ' - ',best_individual[1]*40, 'h')    
-    st.write('Técnicos 8h: ', best_individual[2], ' - ',best_individual[2]*44, 'h')    
-    st.write('Técnicos 12h: ', best_individual[3], ' - ',best_individual[3]*40, 'h')
-    st.write('Horas totais: ', np.sum(best_individual * [40,44,40,44]))
+    total_hours = np.sum(best_individual * [40, 44, 40, 44])
+    # Criar um DataFrame para exibir os resultados em uma tabela
+    data = {
+        'Categoria': ['Enfermeiros 8h', 'Enfermeiros 12h', 'Técnicos 8h', 'Técnicos 12h'],
+        'Quantidade': [best_individual[0], best_individual[1], best_individual[2], best_individual[3]],
+        'Horas por semana': [best_individual[0]*44, best_individual[1]*40, best_individual[2]*44, best_individual[3]*40]
+    }
+
+    df = pd.DataFrame(data)
+
+    # Exibir a tabela
+    st.table(df)
+    # Exibir o total de horas
+    st.write('Horas totais: ', total_hours)
     st.write('Horas necessárias: ', the)
     
-    # df = pd.DataFrame(best_individual, 
-    #                     columns=[f'Turno {i+1}' for i in range(n_turnos)],
-    #                     index=[f'Enfermeiro {i+1}' for i in range(n_enfermeiros)])
-    # st.dataframe(df)
-
+    
     # Gráfico da evolução do fitness ao longo das gerações
     gen = logbook.select("gen")
     min_fitness_values = logbook.select("min")
