@@ -185,7 +185,7 @@ if st.button('Otimizar'):
     data = {
         'Categoria': ['Enfermeiros 12h', 'Enfermeiros 9h', 'Técnicos 12h', 'Técnicos 9h'],
         'Quantidade': [en_12, en_9, te_12, te_9],
-        'Horas por quinzena': horas_por_dia * NUM_DIAS
+        'Horas por quinzena': [en_12 * 12  * NUM_DIAS, en_9 * 9  * NUM_DIAS, te_12 * 12  * NUM_DIAS, te_9 * 9  * NUM_DIAS]
     }
 
     df = pd.DataFrame(data)
@@ -200,7 +200,7 @@ if st.button('Otimizar'):
 
     # Exibir porcentagem de enfermeiros
     st.write('"%" enfermeiros: ', ((en_12 + en_9)/(en_12 + en_9 + te_12+te_9))*100, '%')
-    st.write('"%" necessária: ', porc_enf)
+    st.write('"%" necessária: ', porc_enf*100, '%')
 
     # Gráfico da evolução do fitness ao longo das gerações
     gen = logbook.select("gen")
