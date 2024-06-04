@@ -7,12 +7,32 @@ import seaborn as sns
 from deap import base, creator, tools, algorithms
 
 TAMANHO_GENE = 4
+NUM_DIAS = 14
+NUM_FDS = 4
+# def init_individual(N, T):
+#     return [random.randint(1, 50) for _ in range(N * T)]
 
-def init_individual(N, T):
-    return [random.randint(1, 50) for _ in range(N * T)]
+# def init_population(n, N, T):
+#     return [creator.Individual(init_individual(N, T)) for _ in range(n)]
 
-def init_population(n, N, T):
-    return [creator.Individual(init_individual(N, T)) for _ in range(n)]
+def campos_pacientes():
+    cols = st.columns(5)
+
+    # Entradas em cada coluna
+    with cols[0]:
+        p1 = st.number_input('PCM', min_value=0, value=20, step=1)
+    with cols[1]:
+        p2 = st.number_input('PCI', min_value=0, value=11, step=1)
+    with cols[2]:
+        p3 = st.number_input('PCAD', min_value=0, value=5, step=1)
+    with cols[3]:
+        p4 = st.number_input('PCSI', min_value=0, value=1, step=1)
+    with cols[4]:
+        p5 = st.number_input('PCIt', min_value=0, value=0, step=1)
+
+    # Lista de pacientes
+    p = [p1, p2, p3, p4, p5]
+    return p
 
 def the_semana(pacientes, ist):
     ''' Explicação:
@@ -29,7 +49,7 @@ def the_semana(pacientes, ist):
             porc_enf[argmax(pacientes)]
     ''' 
     horas_pd = [4, 6, 10, 10, 18]
-    horas_semana = np.dot(horas_pd, pacientes)*7*ist
+    horas_semana = np.dot(horas_pd, pacientes)*NUM_DIAS*ist
 
     porcentagens = [0.33, 0.33, 0.36, 0.42, 0.52]
     porc_enf = porcentagens[np.argmax(pacientes)]
@@ -37,29 +57,46 @@ def the_semana(pacientes, ist):
 
 def fitness_funcionarios(individuo, horas_necessarias, porcentagem_enf):
     ''''
-    Um indivíduo tem estrutura: [n_enf8h, n_enf12h, n_tec8h, n_tec12h]
+    Um indivíduo tem estrutura: [EN_12, EN_9, TE_12, TE_9]
     
     Critérios
     1. Somatório de horas é próximo das horas mínimas por semana
-    2. Aproximadamente x% das horas são de enfermeiros, x é definido pelo max(PACIENTES_POR_TIPO)
-    3. Aproximadamente 2/7 das horas totais são de funcionários de 12h, porque funcionários de 12h não trabalham no fim de semana
+    2. Aproximadamente x% dos funcionários são enfermeiros, x é definido pelo max(PACIENTES_POR_TIPO)
     '''
-    # Cálculos gerais
-    cargas_horarias = np.array([44, 40, 44, 40])
-    horas_por_func = individuo * cargas_horarias
-    horas_totais = np.sum(horas_por_func)
 
-    # Critério 1: Número de horas é próximo das horas necessárias
-    penalidade_1 = np.abs(horas_necessarias - horas_totais)
+    # Constantes
 
-    # Critério 2: Porcentagem de horas de enfermeiros é próxima do necessário
-    penalidade_2 = np.abs(np.sum(horas_por_func[0:2]) - porcentagem_enf*horas_totais)
-    
-    # Critério 3: Mínimo de funcionários que trabalham 12h
-    penalidade_3 = np.abs((horas_por_func[1] + horas_por_func[3]) - 0.29 * horas_totais)
-    
-    # Combinação dos critérios em um valor de fitness
-    valor_fitness = penalidade_1 + penalidade_2 + penalidade_3 
+    PESO_1 = 100
+    PESO_2 = 1
+    PESO_3 = 5
+
+    # Num de funcionarios
+    en_12, en_9, te_12, te_9 = individuo
+    N_en = en_12 + en_9 # total enf
+    N_te = te_12 + te_9 # total tec
+    N_total = N_en + N_te
+
+    # Critério 1: proporção de nfermeiros e técnicos
+    # Proporcoes
+    prop_en = N_en / N_total
+    prop_te = N_te / N_total
+
+    # Calculando a diferença absoluta
+    diff_en = abs(prop_en - porcentagem_enf)
+    diff_te = abs(prop_te - (1-porcentagem_enf))
+
+    # Calculando a penalidade de proporção
+    penalidade_proporcao = PESO_1 * (diff_en + diff_te)
+
+    # Critério 2: horas mínimas necessárias
+    horas_por_dia = (en_12 * 12) + (en_9 * 9) + (te_12 * 12) + (te_9 * 9)
+    total_horas = horas_por_dia * NUM_DIAS
+    if total_horas < horas_necessarias :
+        penalidade_horas = 1000
+    else:
+        penalidade_horas = PESO_2 * (total_horas - horas_necessarias)
+
+    valor_fitness = penalidade_proporcao + penalidade_horas
 
     return valor_fitness, 
 
@@ -69,7 +106,7 @@ def run_genetic_algorithm(params, horas_necessarias, porcentagem_enf):
     creator.create('Individual', list, fitness=creator.FitnessMin)          # define a estrutura de um individuo
 
     toolbox = base.Toolbox()
-    max_attr = np.ceil(horas_necessarias / 40)     
+    max_attr = np.ceil(horas_necessarias / 84)     
     toolbox.register('genes', np.random.randint, 0, max_attr + 1)    # um indivíduo so admite valores 0 a max_attr
     toolbox.register('individuo', tools.initRepeat, creator.Individual, toolbox.genes, TAMANHO_GENE)   # um individuo é uma lista de 4 attr_funcionario 
     toolbox.register('populacao', tools.initRepeat, list, toolbox.individuo)    # uma populacao é uma lista de individuos
@@ -93,6 +130,10 @@ def run_genetic_algorithm(params, horas_necessarias, porcentagem_enf):
     logbook = tools.Logbook()
     logbook.header = ["gen", "nevals"] + stats.fields
 
+    # Critérios de parada
+    fitness_threshold = 50  # Critério de parada baseado na aptidão mínima
+    best_fitness = float('inf')
+
     for gen in range(params['n_gen']):
         offspring = algorithms.varAnd(pop, toolbox, cxpb=params['cxpb'], mutpb=params['mutpb'])
         fits = map(toolbox.evaluate, offspring)
@@ -105,6 +146,10 @@ def run_genetic_algorithm(params, horas_necessarias, porcentagem_enf):
         logbook.record(gen=gen, nevals=len(pop), **record)
         hof.update(pop)
 
+        current_best_fitness = record['min']
+        if current_best_fitness < best_fitness:
+            best_fitness = current_best_fitness
+
     return pop, hof, stats, logbook
 
 # Streamlit App
@@ -112,12 +157,11 @@ st.title('Genetic Algorithm for Nurse Scheduling Optimization')
 
 # Entradas
 pop_size = st.number_input('Tamanho da população', min_value=1, value=50)
-cxpb = st.number_input('Probabilidade de crossover', min_value=0.0, max_value=1.0, value=0.5)
-mutpb = st.number_input('Probabilidade de mutação', min_value=0.0, max_value=1.0, value=0.2)
-n_gen = st.number_input('Número de gerações', min_value=1, value=20)
+cxpb = st.number_input('Probabilidade de crossover', min_value=0.0, max_value=1.0, value=0.8)
+mutpb = st.number_input('Probabilidade de mutação', min_value=0.0, max_value=1.0, value=0.1)
+n_gen = st.number_input('Número de gerações', min_value=1, value=100)
 
-p_input = st.text_input('Pacientes de cada tipo (ex: 40, 12, 5, 2, 1)', '5, 5, 5, 5, 0')
-p = list(map(int, p_input.split(',')))
+p = campos_pacientes()
 ist = st.number_input('Índice de segurança técnica', min_value=1.15, value=1.15)
 
 if st.button('Otimizar'):
@@ -134,23 +178,30 @@ if st.button('Otimizar'):
     st.write('Fitness da melhor solução:', best_ind.fitness.values[0])
     
     best_individual = np.array(best_ind)
-    total_hours = np.sum(best_individual * [40, 44, 40, 44])
+    en_12, en_9, te_12, te_9 = best_individual
+    horas_por_dia = (en_12 * 12) + (en_9 * 9) + (te_12 * 12) + (te_9 * 9)
+    total_hours = horas_por_dia * NUM_DIAS
     # Criar um DataFrame para exibir os resultados em uma tabela
     data = {
-        'Categoria': ['Enfermeiros 8h', 'Enfermeiros 12h', 'Técnicos 8h', 'Técnicos 12h'],
-        'Quantidade': [best_individual[0], best_individual[1], best_individual[2], best_individual[3]],
-        'Horas por semana': [best_individual[0]*44, best_individual[1]*40, best_individual[2]*44, best_individual[3]*40]
+        'Categoria': ['Enfermeiros 12h', 'Enfermeiros 9h', 'Técnicos 12h', 'Técnicos 9h'],
+        'Quantidade': [en_12, en_9, te_12, te_9],
+        'Horas por quinzena': horas_por_dia * NUM_DIAS
     }
 
     df = pd.DataFrame(data)
 
     # Exibir a tabela
     st.table(df)
+
     # Exibir o total de horas
     st.write('Horas totais: ', total_hours)
     st.write('Horas necessárias: ', the)
-    
-    
+    st.write('Diferença: ', total_hours - the)
+
+    # Exibir porcentagem de enfermeiros
+    st.write('"%" enfermeiros: ', ((en_12 + en_9)/(en_12 + en_9 + te_12+te_9))*100, '%')
+    st.write('"%" necessária: ', porc_enf)
+
     # Gráfico da evolução do fitness ao longo das gerações
     gen = logbook.select("gen")
     min_fitness_values = logbook.select("min")
