@@ -157,7 +157,7 @@ def run_genetic_algorithm(params, horas_necessarias, porcentagem_enf, crossover_
     return pop, hof, stats, logbook
 
 # Streamlit App
-st.title('Genetic Algorithm for Nurse Scheduling Optimization')
+st.title('Otimização de Escala de Enfermeiros com Algoritmos Genéticos')
 
 # Entradas
 pop_size = st.number_input('Tamanho da população', min_value=1, value=50)
