@@ -68,7 +68,6 @@ def fitness_funcionarios(individuo, horas_necessarias, porcentagem_enf):
 
     PESO_1 = 100
     PESO_2 = 1
-    PESO_3 = 5
 
     # Num de funcionarios
     en_12, en_9, te_12, te_9 = individuo
@@ -83,10 +82,10 @@ def fitness_funcionarios(individuo, horas_necessarias, porcentagem_enf):
 
     # Calculando a diferença absoluta
     diff_en = abs(prop_en - porcentagem_enf)
-    diff_te = abs(prop_te - (1-porcentagem_enf))
+    #diff_te = abs(prop_te - (1-porcentagem_enf))
 
     # Calculando a penalidade de proporção
-    penalidade_proporcao = PESO_1 * (diff_en + diff_te)
+    penalidade_proporcao = PESO_1 * diff_en 
 
     # Critério 2: horas mínimas necessárias
     horas_por_dia = (en_12 * 12) + (en_9 * 9) + (te_12 * 12) + (te_9 * 9)
@@ -131,7 +130,7 @@ def run_genetic_algorithm(params, horas_necessarias, porcentagem_enf):
     logbook.header = ["gen", "nevals"] + stats.fields
 
     # Critérios de parada
-    fitness_threshold = 50  # Critério de parada baseado na aptidão mínima
+    fitness_threshold = 5  # Critério de parada baseado na aptidão mínima
     best_fitness = float('inf')
 
     for gen in range(params['n_gen']):
@@ -149,6 +148,9 @@ def run_genetic_algorithm(params, horas_necessarias, porcentagem_enf):
         current_best_fitness = record['min']
         if current_best_fitness < best_fitness:
             best_fitness = current_best_fitness
+        
+        if best_fitness < fitness_threshold:
+            break
 
     return pop, hof, stats, logbook
 
