@@ -9,28 +9,22 @@ from deap import base, creator, tools, algorithms
 TAMANHO_GENE = 4
 NUM_DIAS = 14
 NUM_FDS = 4
-# def init_individual(N, T):
-#     return [random.randint(1, 50) for _ in range(N * T)]
-
-# def init_population(n, N, T):
-#     return [creator.Individual(init_individual(N, T)) for _ in range(n)]
 
 def campos_pacientes():
     cols = st.columns(5)
 
-    # Entradas em cada coluna
+    # Entradas em cada coluna com ajuda contextual
     with cols[0]:
-        p1 = st.number_input('PCM', min_value=0, value=20, step=1)
+        p1 = st.number_input('PCM', min_value=0, value=20, step=1, help="Número de Pacientes Críticos Médicos")
     with cols[1]:
-        p2 = st.number_input('PCI', min_value=0, value=11, step=1)
+        p2 = st.number_input('PCI', min_value=0, value=11, step=1, help="Número de Pacientes Críticos de Idade")
     with cols[2]:
-        p3 = st.number_input('PCAD', min_value=0, value=5, step=1)
+        p3 = st.number_input('PCAD', min_value=0, value=5, step=1, help="Número de Pacientes Críticos Adultos")
     with cols[3]:
-        p4 = st.number_input('PCSI', min_value=0, value=1, step=1)
+        p4 = st.number_input('PCSI', min_value=0, value=1, step=1, help="Número de Pacientes Críticos de Situação")
     with cols[4]:
-        p5 = st.number_input('PCIt', min_value=0, value=0, step=1)
+        p5 = st.number_input('PCIt', min_value=0, value=0, step=1, help="Número de Pacientes Críticos Internacionais")
 
-    # Lista de pacientes
     p = [p1, p2, p3, p4, p5]
     return p
 
@@ -76,7 +70,7 @@ def fitness_funcionarios(individuo, horas_necessarias, porcentagem_enf):
     N_te = te_12 + te_9 # total tec
     N_total = N_en + N_te
 
-    # Critério 1: proporção de nfermeiros e técnicos
+    # Critério 1: proporção de enfermeiros e técnicos
     # Proporcoes
     prop_en = N_en / N_total
     prop_te = N_te / N_total
@@ -100,7 +94,7 @@ def fitness_funcionarios(individuo, horas_necessarias, porcentagem_enf):
 
     return valor_fitness, 
 
-def run_genetic_algorithm(params, horas_necessarias, porcentagem_enf):
+def run_genetic_algorithm(params, horas_necessarias, porcentagem_enf, crossover_type, mutation_type):
     # Configuração do algoritmo genético usando DEAP
     creator.create('FitnessMin', base.Fitness, weights=(-1.0,))             # define que a fitness é de minimização  
     creator.create('Individual', list, fitness=creator.FitnessMin)          # define a estrutura de um individuo
@@ -114,9 +108,19 @@ def run_genetic_algorithm(params, horas_necessarias, porcentagem_enf):
     def custom_fitness(individual):
         return fitness_funcionarios(individual, horas_necessarias, porcentagem_enf)
 
-    toolbox.register("mate", tools.cxTwoPoint)  # crossover
-    toolbox.register("mutate", tools.mutUniformInt, low=0, up=max_attr, indpb=params['mutpb'])   # mutacao (num aleatorio de 1 a max_attr)
-    toolbox.register("select", tools.selTournament, tournsize=3)    # selecao de pais por torneio
+    # Ajuste do tipo de cruzamento
+    if crossover_type == 'Two-point':
+        toolbox.register("mate", tools.cxTwoPoint)
+    elif crossover_type == 'Uniform':
+        toolbox.register("mate", tools.cxUniform, indpb=0.5)
+
+    # Ajuste do tipo de mutação
+    if mutation_type == 'Uniform':
+        toolbox.register("mutate", tools.mutUniformInt, low=0, up=max_attr, indpb=params['mutpb'])
+    elif mutation_type == 'Gaussian':
+        toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1, indpb=params['mutpb'])
+
+    toolbox.register("select", tools.selTournament, tournsize=params['tournsize'])    # selecao de pais por torneio
     toolbox.register("evaluate", custom_fitness)
 
     pop = toolbox.populacao(n=params['pop_size'])
@@ -160,6 +164,10 @@ pop_size = st.number_input('Tamanho da população', min_value=1, value=50)
 cxpb = st.number_input('Probabilidade de crossover', min_value=0.0, max_value=1.0, value=0.8)
 mutpb = st.number_input('Probabilidade de mutação', min_value=0.0, max_value=1.0, value=0.1)
 n_gen = st.number_input('Número de gerações', min_value=1, value=100)
+tournsize = st.number_input('Tamanho do torneio', min_value=2, value=3)
+
+crossover_type = st.selectbox('Tipo de cruzamento', ['Two-point', 'Uniform'], index=0)
+mutation_type = st.selectbox('Tipo de mutação', ['Uniform', 'Gaussian'], index=0)
 
 p = campos_pacientes()
 ist = st.number_input('Índice de segurança técnica', min_value=1.15, value=1.15)
@@ -170,17 +178,21 @@ if st.button('Otimizar'):
         'pop_size': pop_size,
         'cxpb': cxpb,
         'mutpb': mutpb,
-        'n_gen': n_gen
+        'n_gen': n_gen,
+        'tournsize': tournsize
     }
-    pop, hof, stats, logbook = run_genetic_algorithm(params, the, porc_enf)
+
+    pop, hof, stats, logbook = run_genetic_algorithm(params, the, porc_enf, crossover_type, mutation_type)
     best_ind = hof[0]
-    # st.write('Melhor solução:', best_ind)
+    
+    # Resultados da melhor solução
     st.write('Fitness da melhor solução:', best_ind.fitness.values[0])
     
     best_individual = np.array(best_ind)
     en_12, en_9, te_12, te_9 = best_individual
     horas_por_dia = (en_12 * 12) + (en_9 * 9) + (te_12 * 12) + (te_9 * 9)
     total_hours = horas_por_dia * NUM_DIAS
+    
     # Criar um DataFrame para exibir os resultados em uma tabela
     data = {
         'Categoria': ['Enfermeiros 12h', 'Enfermeiros 9h', 'Técnicos 12h', 'Técnicos 9h'],
@@ -199,8 +211,8 @@ if st.button('Otimizar'):
     st.write('Diferença: ', total_hours - the)
 
     # Exibir porcentagem de enfermeiros
-    st.write('"%" enfermeiros: ', ((en_12 + en_9)/(en_12 + en_9 + te_12+te_9))*100, '%')
-    st.write('"%" necessária: ', porc_enf*100, '%')
+    st.write('Percentual enfermeiros: ', ((en_12 + en_9) / (en_12 + en_9 + te_12 + te_9)) * 100, '%')
+    st.write('Percentual necessária: ', porc_enf * 100, '%')
 
     # Gráfico da evolução do fitness ao longo das gerações
     gen = logbook.select("gen")
@@ -217,22 +229,10 @@ if st.button('Otimizar'):
     plt.grid(True)
     st.pyplot(plt)
 
-    # # Gráfico de barras da distribuição de turnos por enfermeiro
-    # turnos_por_enfermeiro = np.sum(best_individual, axis=1)
-
-    # plt.figure(figsize=(10, 5))
-    # sns.barplot(x=[f'Enfermeiro {i+1}' for i in range(n_enfermeiros)], y=turnos_por_enfermeiro)
-    # plt.xlabel("Enfermeiro")
-    # plt.ylabel("Número de Turnos")
-    # plt.title("Distribuição de Turnos por Enfermeiro")
-    # st.pyplot(plt)
-
-    # # Heatmap da escala de turnos
-    # plt.figure(figsize=(10, 8))
-    # sns.heatmap(df, cmap="YlGnBu", cbar=False, linewidths=0.5, annot=True)
-    # plt.xlabel("Turnos")
-    # plt.ylabel("Enfermeiros")
-    # plt.title("Heatmap da Escala de Turnos")
-    # st.pyplot(plt)
-        
-
+    # Gráfico de barras da distribuição de turnos por categoria
+    plt.figure(figsize=(10, 5))
+    sns.barplot(x=['Enfermeiros 12h', 'Enfermeiros 9h', 'Técnicos 12h', 'Técnicos 9h'], y=[en_12, en_9, te_12, te_9])
+    plt.xlabel("Categoria")
+    plt.ylabel("Quantidade")
+    plt.title("Distribuição de Turnos por Categoria")
+    st.pyplot(plt)
