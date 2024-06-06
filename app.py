@@ -7,8 +7,7 @@ import seaborn as sns
 from deap import base, creator, tools, algorithms
 
 TAMANHO_GENE = 4
-NUM_DIAS = 14
-NUM_FDS = 4
+NUM_SEMANAS = 2       # tem que ser multiplo de 14
 
 def campos_pacientes():
     cols = st.columns(5)
@@ -43,7 +42,7 @@ def the_semana(pacientes, ist):
             porc_enf[argmax(pacientes)]
     ''' 
     horas_pd = [4, 6, 10, 10, 18]
-    horas_semana = np.dot(horas_pd, pacientes)*NUM_DIAS*ist
+    horas_semana = np.dot(horas_pd, pacientes)*NUM_SEMANAS*7*ist
 
     porcentagens = [0.33, 0.33, 0.36, 0.42, 0.52]
     porc_enf = porcentagens[np.argmax(pacientes)]
@@ -62,7 +61,6 @@ def fitness_funcionarios(individuo, horas_necessarias, porcentagem_enf):
 
     PESO_1 = 100
     PESO_2 = 1
-    PESO_3 = 5
 
     # Num de funcionarios
     en_12, en_9, te_12, te_9 = individuo
@@ -73,20 +71,18 @@ def fitness_funcionarios(individuo, horas_necessarias, porcentagem_enf):
     # Critério 1: proporção de enfermeiros e técnicos
     # Proporcoes
     prop_en = N_en / N_total
-    prop_te = N_te / N_total
 
     # Calculando a diferença absoluta
     diff_en = abs(prop_en - porcentagem_enf)
-    diff_te = abs(prop_te - (1-porcentagem_enf))
 
     # Calculando a penalidade de proporção
-    penalidade_proporcao = PESO_1 * (diff_en + diff_te)
+    penalidade_proporcao = PESO_1 * (diff_en)
 
     # Critério 2: horas mínimas necessárias
-    horas_por_dia = (en_12 * 12) + (en_9 * 9) + (te_12 * 12) + (te_9 * 9)
-    total_horas = horas_por_dia * NUM_DIAS
+    horas_por_semana = (en_12 * 84) + (en_9 * 88) + (te_12 * 84) + (te_9 * 88)
+    total_horas = horas_por_semana * NUM_SEMANAS
     if total_horas < horas_necessarias :
-        penalidade_horas = 1000
+        penalidade_horas = 100000
     else:
         penalidade_horas = PESO_2 * (total_horas - horas_necessarias)
 
@@ -135,7 +131,7 @@ def run_genetic_algorithm(params, horas_necessarias, porcentagem_enf, crossover_
     logbook.header = ["gen", "nevals"] + stats.fields
 
     # Critérios de parada
-    fitness_threshold = 50  # Critério de parada baseado na aptidão mínima
+    fitness_threshold = 5  # Critério de parada baseado na aptidão mínima
     best_fitness = float('inf')
 
     for gen in range(params['n_gen']):
@@ -153,6 +149,9 @@ def run_genetic_algorithm(params, horas_necessarias, porcentagem_enf, crossover_
         current_best_fitness = record['min']
         if current_best_fitness < best_fitness:
             best_fitness = current_best_fitness
+
+        if best_fitness < fitness_threshold:
+            break
 
     return pop, hof, stats, logbook
 
@@ -190,14 +189,14 @@ if st.button('Otimizar'):
     
     best_individual = np.array(best_ind)
     en_12, en_9, te_12, te_9 = best_individual
-    horas_por_dia = (en_12 * 12) + (en_9 * 9) + (te_12 * 12) + (te_9 * 9)
-    total_hours = horas_por_dia * NUM_DIAS
+    horas_por_semana = (en_12 * 84) + (en_9 * 88) + (te_12 * 84) + (te_9 * 88)
+    total_hours = horas_por_semana * NUM_SEMANAS
     
     # Criar um DataFrame para exibir os resultados em uma tabela
     data = {
         'Categoria': ['Enfermeiros 12h', 'Enfermeiros 9h', 'Técnicos 12h', 'Técnicos 9h'],
         'Quantidade': [en_12, en_9, te_12, te_9],
-        'Horas por quinzena': [en_12 * 12  * NUM_DIAS, en_9 * 9  * NUM_DIAS, te_12 * 12  * NUM_DIAS, te_9 * 9  * NUM_DIAS]
+        'Horas por quinzena': [en_12 * 84 ,en_9 * 88 , te_12 * 84 , te_9 * 88]
     }
 
     df = pd.DataFrame(data)
