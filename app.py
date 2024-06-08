@@ -194,7 +194,7 @@ if st.button('Otimizar'):
     
     # Criar um DataFrame para exibir os resultados em uma tabela
     data = {
-        'Categoria': ['Enfermeiros 12h', 'Enfermeiros 9h', 'Técnicos 12h', 'Técnicos 9h'],
+        'Categoria': ['Enfermeiros 12x36', 'Enfermeiros 6x1', 'Técnicos 12x36', 'Técnicos 6x1'],
         'Quantidade': [en_12, en_9, te_12, te_9],
         'Horas por quinzena': [en_12 * 84 ,en_9 * 88 , te_12 * 84 , te_9 * 88]
     }
