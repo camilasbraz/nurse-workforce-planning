@@ -7,37 +7,37 @@ import seaborn as sns
 from deap import base, creator, tools, algorithms
 
 TAMANHO_GENE = 4
-NUM_SEMANAS = 2       # tem que ser multiplo de 14
+NUM_SEMANAS = 2  
 
 def campos_pacientes():
     cols = st.columns(5)
 
     # Entradas em cada coluna com ajuda contextual
     with cols[0]:
-        p1 = st.number_input('PCM', min_value=0, value=20, step=1, help="Número de Pacientes Críticos Médicos")
+        p1 = st.number_input('PCM', min_value=0, value=20, step=1, help="Número de Pacientes de Cuidados Mínimos")
     with cols[1]:
-        p2 = st.number_input('PCI', min_value=0, value=11, step=1, help="Número de Pacientes Críticos de Idade")
+        p2 = st.number_input('PCI', min_value=0, value=11, step=1, help="Número de Pacientes de Cuidados Intermediários")
     with cols[2]:
-        p3 = st.number_input('PCAD', min_value=0, value=5, step=1, help="Número de Pacientes Críticos Adultos")
+        p3 = st.number_input('PCAD', min_value=0, value=5, step=1, help="Número de Pacientes de Cuidados de Alta Dependência")
     with cols[3]:
-        p4 = st.number_input('PCSI', min_value=0, value=1, step=1, help="Número de Pacientes Críticos de Situação")
+        p4 = st.number_input('PCSI', min_value=0, value=1, step=1, help="Número de Pacientes de Cuidados Semi-Intensivos")
     with cols[4]:
-        p5 = st.number_input('PCIt', min_value=0, value=0, step=1, help="Número de Pacientes Críticos Internacionais")
+        p5 = st.number_input('PCIt', min_value=0, value=0, step=1, help="Número de Pacientes de Cuidados Intensivos")
 
     p = [p1, p2, p3, p4, p5]
     return p
 
 def the_semana(pacientes, ist):
     ''' Explicação:
-        Calcula a quantidade de horas de enfermagem necessária em uma semana de acordo com os tipos de pacientes
+        Calcula a quantidade de horas de enfermagem necessária em duas semanas de acordo com os tipos de pacientes
         Recebe um vetor de quantidade de pacientes por tipo e um índice de segurança (ist)
                     [PCM    PCI     PCAD    PCSI    PCIt]
         pacientes = [40     12      5       2       0   ]
         horas_pd  = [4      6       10      10      18  ]       
         porc_enf  = [0,33   0,33    0,36    0,42    0,52]
 
-        - O numero de horas totais de enfermagem por semana é:
-            sum(pacientes * horas_pd)*7*IST
+        - O numero de horas totais de enfermagem para duas semanas é:
+            sum(pacientes * horas_pd)*14*IST
         - A porcentagem de enfermeiros nessas horas é
             porc_enf[argmax(pacientes)]
     ''' 
@@ -218,12 +218,22 @@ if st.button('Otimizar'):
     min_fitness_values = logbook.select("min")
     avg_fitness_values = logbook.select("avg")
 
+    # Gráfico Min Fitness
     plt.figure(figsize=(10, 5))
-    plt.plot(gen, min_fitness_values, label="Min Fitness")
-    plt.plot(gen, avg_fitness_values, label="Avg Fitness")
+    plt.plot(gen, min_fitness_values, label="Min Fitness", color='blue')
     plt.xlabel("Generation")
-    plt.ylabel("Fitness")
-    plt.title("Evolução do Fitness ao Longo das Gerações")
+    plt.ylabel("Min Fitness")
+    plt.title("Evolução do Min Fitness ao Longo das Gerações")
+    plt.legend()
+    plt.grid(True)
+    st.pyplot(plt)
+
+    # Gráfico Avg Fitness
+    plt.figure(figsize=(10, 5))
+    plt.plot(gen, avg_fitness_values, label="Avg Fitness", color='green')
+    plt.xlabel("Generation")
+    plt.ylabel("Avg Fitness")
+    plt.title("Evolução do Avg Fitness ao Longo das Gerações")
     plt.legend()
     plt.grid(True)
     st.pyplot(plt)
