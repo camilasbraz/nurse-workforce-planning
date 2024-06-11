@@ -27,12 +27,12 @@ def campos_pacientes():
     p = [p1, p2, p3, p4, p5]
     return p
 
-def the_semana(pacientes, ist):
+def the_quinzena(pacientes, ist):
     ''' Explicação:
         Calcula a quantidade de horas de enfermagem necessária em duas semanas de acordo com os tipos de pacientes
         Recebe um vetor de quantidade de pacientes por tipo e um índice de segurança (ist)
                     [PCM    PCI     PCAD    PCSI    PCIt]
-        pacientes = [40     12      5       2       0   ]
+        pacientes = [20     11      5       1       0   ]
         horas_pd  = [4      6       10      10      18  ]       
         porc_enf  = [0,33   0,33    0,36    0,42    0,52]
 
@@ -42,11 +42,11 @@ def the_semana(pacientes, ist):
             porc_enf[argmax(pacientes)]
     ''' 
     horas_pd = [4, 6, 10, 10, 18]
-    horas_semana = np.dot(horas_pd, pacientes)*NUM_SEMANAS*7*ist
+    horas_quinzena = np.dot(horas_pd, pacientes)*ist*14
 
     porcentagens = [0.33, 0.33, 0.36, 0.42, 0.52]
     porc_enf = porcentagens[np.argmax(pacientes)]
-    return horas_semana, porc_enf 
+    return horas_quinzena, porc_enf 
 
 def fitness_funcionarios(individuo, horas_necessarias, porcentagem_enf):
     ''''
@@ -79,8 +79,8 @@ def fitness_funcionarios(individuo, horas_necessarias, porcentagem_enf):
     penalidade_proporcao = PESO_1 * (diff_en)
 
     # Critério 2: horas mínimas necessárias
-    horas_por_semana = (en_12 * 84) + (en_9 * 88) + (te_12 * 84) + (te_9 * 88)
-    total_horas = horas_por_semana * NUM_SEMANAS
+    horas_por_quinzena = (en_12 * 84) + (en_9 * 88) + (te_12 * 84) + (te_9 * 88)
+    total_horas = horas_por_quinzena
     if total_horas < horas_necessarias :
         penalidade_horas = 100000
     else:
@@ -156,7 +156,7 @@ def run_genetic_algorithm(params, horas_necessarias, porcentagem_enf, crossover_
     return pop, hof, stats, logbook
 
 # Streamlit App
-st.title('Otimização de Escala de Enfermeiros com Algoritmos Genéticos')
+st.title('Otimização de Dimensionamento de Enfermagem com Algoritmos Genéticos')
 
 # Entradas
 pop_size = st.number_input('Tamanho da população', min_value=1, value=50)
@@ -172,7 +172,7 @@ p = campos_pacientes()
 ist = st.number_input('Índice de segurança técnica', min_value=1.15, value=1.15)
 
 if st.button('Otimizar'):
-    the, porc_enf = the_semana(p, ist)      # Cálculo inicial
+    the, porc_enf = the_quinzena(p, ist)      # Cálculo inicial
     params = {
         'pop_size': pop_size,
         'cxpb': cxpb,
@@ -190,13 +190,13 @@ if st.button('Otimizar'):
     best_individual = np.array(best_ind)
     en_12, en_9, te_12, te_9 = best_individual
     horas_por_semana = (en_12 * 84) + (en_9 * 88) + (te_12 * 84) + (te_9 * 88)
-    total_hours = horas_por_semana * NUM_SEMANAS
+    total_hours = horas_por_semana 
     
     # Criar um DataFrame para exibir os resultados em uma tabela
     data = {
         'Categoria': ['Enfermeiros 12x36', 'Enfermeiros 6x1', 'Técnicos 12x36', 'Técnicos 6x1'],
         'Quantidade': [en_12, en_9, te_12, te_9],
-        'Horas por quinzena': [en_12 * 84 ,en_9 * 88 , te_12 * 84 , te_9 * 88]
+        'Horas por quinzena': [en_12 * 84 , en_9 * 88 , te_12 * 84 , te_9 * 88]
     }
 
     df = pd.DataFrame(data)
@@ -245,3 +245,41 @@ if st.button('Otimizar'):
     plt.ylabel("Quantidade")
     plt.title("Distribuição de Turnos por Categoria")
     st.pyplot(plt)
+
+# Botão para ranking
+if st.button("Ranking"):
+    the, porc_enf = the_semana(p, ist)      # Cálculo inicial
+    params = {
+        'pop_size': pop_size,
+        'cxpb': cxpb,
+        'mutpb': mutpb,
+        'n_gen': n_gen,
+        'tournsize': tournsize
+    }
+    st.header("Top 3 Melhores Resultados")
+    resultados = []
+
+    for _ in range(100):
+        pop, hof, stats, logbook = run_genetic_algorithm(params, the, porc_enf, crossover_type, mutation_type)
+        best_individual = hof[0]
+        best_fitness = best_individual.fitness.values[0]
+        total_hours = sum(best_individual)
+        percent_enf = (best_individual[0] + best_individual[1]) / total_hours
+
+        resultados.append({
+            'fitness': best_fitness,
+            'total_hours': total_hours,
+            'percent_enf': percent_enf,
+            'best_individual': best_individual
+        })
+
+    # Ordenar resultados por fitness
+    resultados = sorted(resultados, key=lambda x: x['fitness'])
+
+    # Exibir os 3 melhores resultados
+    for i, resultado in enumerate(resultados[:3]):
+        st.subheader(f"Resultado {i+1}")
+        st.write(f"Fitness: {resultado['fitness']}")
+        st.write(f"Horas Totais: {resultado['total_hours']}")
+        st.write(f"Percentual de Enfermeiros: {resultado['percent_enf']:.2%}")
+        st.write(f"Indivíduo: {resultado['best_individual']}")
