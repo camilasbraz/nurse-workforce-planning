@@ -248,7 +248,7 @@ if st.button('Otimizar'):
 
 # Botão para ranking
 if st.button("Ranking"):
-    the, porc_enf = the_semana(p, ist)      # Cálculo inicial
+    the, porc_enf = the_quinzena(p, ist)      # Cálculo inicial
     params = {
         'pop_size': pop_size,
         'cxpb': cxpb,
@@ -263,8 +263,9 @@ if st.button("Ranking"):
         pop, hof, stats, logbook = run_genetic_algorithm(params, the, porc_enf, crossover_type, mutation_type)
         best_individual = hof[0]
         best_fitness = best_individual.fitness.values[0]
-        total_hours = sum(best_individual)
-        percent_enf = (best_individual[0] + best_individual[1]) / total_hours
+        en_12, en_9, te_12, te_9 = best_individual
+        total_hours = (en_12 * 84) + (en_9 * 88) + (te_12 * 84) + (te_9 * 88)
+        percent_enf = (en_12 + en_9) / (en_12 + en_9 + te_12 + te_9)
 
         resultados.append({
             'fitness': best_fitness,
@@ -280,6 +281,27 @@ if st.button("Ranking"):
     for i, resultado in enumerate(resultados[:3]):
         st.subheader(f"Resultado {i+1}")
         st.write(f"Fitness: {resultado['fitness']}")
-        st.write(f"Horas Totais: {resultado['total_hours']}")
-        st.write(f"Percentual de Enfermeiros: {resultado['percent_enf']:.2%}")
-        st.write(f"Indivíduo: {resultado['best_individual']}")
+
+        best_individual = np.array(resultado['best_individual'])
+        en_12, en_9, te_12, te_9 = best_individual
+
+        # Criar um DataFrame para exibir os resultados em uma tabela
+        data = {
+            'Categoria': ['Enfermeiros 12x36', 'Enfermeiros 6x1', 'Técnicos 12x36', 'Técnicos 6x1'],
+            'Quantidade': [en_12, en_9, te_12, te_9],
+            'Horas por quinzena': [en_12 * 84 , en_9 * 88 , te_12 * 84 , te_9 * 88]
+        }
+
+        df = pd.DataFrame(data)
+
+        # Exibir a tabela
+        st.table(df)
+
+        # Exibir o total de horas
+        st.write('Horas totais: ', resultado['total_hours'])
+        st.write('Horas necessárias: ', the)
+        st.write('Diferença: ', resultado['total_hours'] - the)
+
+        # Exibir porcentagem de enfermeiros
+        st.write('Percentual enfermeiros: ', resultado['percent_enf'] * 100, '%')
+        st.write('Percentual necessária: ', porc_enf * 100, '%')
